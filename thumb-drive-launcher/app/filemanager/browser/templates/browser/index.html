@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Drive Browser</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3248;
+    --accent: #5b6ef5;
+    --accent2: #7c8cf8;
+    --danger: #e05c5c;
+    --success: #4caf7d;
+    --text: #e8eaf6;
+    --muted: #7b82a8;
+    --radius: 8px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { font-size: 18px; font-weight: 700; color: var(--accent2); display: flex; align-items: center; gap: 8px; }
+  .logo svg { width: 22px; height: 22px; }
+  .search-wrap { flex: 1; max-width: 360px; position: relative; }
+  .search-wrap input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px;
+    padding: 7px 16px 7px 36px; color: var(--text); font-size: 14px; outline: none;
+    transition: border-color .15s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap .ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .header-actions { margin-left: auto; display: flex; gap: 8px; }
+
+  /* ── Breadcrumb ── */
+  .breadcrumb {
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .breadcrumb a { color: var(--accent2); text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb .sep { opacity: .5; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .toolbar .info { margin-left: auto; font-size: 13px; color: var(--muted); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: var(--radius); font-size: 13px;
+    font-weight: 500; cursor: pointer; border: 1px solid transparent;
+    transition: background .15s, opacity .15s;
+  }
+  .btn svg { width: 15px; height: 15px; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: transparent; color: var(--muted); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn:disabled { opacity: .45; pointer-events: none; }
+
+  /* ── File table ── */
+  .file-table-wrap { padding: 0 24px 80px; overflow-x: auto; }
+  .file-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .file-table th {
+    text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .file-table th a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .file-table th a:hover { color: var(--text); }
+  .file-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+  .file-table tr:last-child td { border-bottom: none; }
+  .file-table tr:hover td { background: rgba(91,110,245,.06); }
+  .file-table tr.selected td { background: rgba(91,110,245,.12); }
+
+  .col-check { width: 36px; }
+  .col-name { min-width: 200px; }
+  .col-size { width: 100px; text-align: right; }
+  .col-actions { width: 100px; text-align: right; }
+
+  .file-name {
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none; color: var(--text); font-weight: 500;
+  }
+  .file-name:hover { color: var(--accent2); }
+  .file-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
+  .file-icon.folder { background: rgba(91,110,245,.18); color: var(--accent2); }
+  .file-icon.image  { background: rgba(76,175,125,.18); color: var(--success); }
+  .file-icon.text   { background: rgba(200,180,80,.18); color: #c8b450; }
+  .file-icon.pdf    { background: rgba(224,92,92,.18); color: var(--danger); }
+  .file-icon.video  { background: rgba(155,89,182,.18); color: #c39bd3; }
+  .file-icon.audio  { background: rgba(52,152,219,.18); color: #5dade2; }
+  .file-icon.other  { background: rgba(127,127,127,.14); color: var(--muted); }
+
+  .row-actions { display: flex; gap: 4px; justify-content: flex-end; opacity: 0; transition: opacity .15s; }
+  tr:hover .row-actions { opacity: 1; }
+  .icon-btn {
+    width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent;
+    color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background .12s, color .12s;
+  }
+  .icon-btn:hover { background: var(--surface2); color: var(--text); }
+  .icon-btn.danger:hover { background: rgba(224,92,92,.15); color: var(--danger); }
+  .icon-btn svg { width: 15px; height: 15px; }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 80px 24px; color: var(--muted); }
+  .empty svg { width: 56px; height: 56px; margin-bottom: 16px; opacity: .4; }
+  .empty p { font-size: 15px; margin-bottom: 8px; }
+
+  /* ── Modals ── */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    backdrop-filter: blur(3px); z-index: 500; align-items: center; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px; min-width: 340px; max-width: 480px; width: 90%;
+  }
+  .modal h3 { font-size: 17px; margin-bottom: 16px; }
+  .modal input[type=text] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 9px 12px; color: var(--text); font-size: 14px; outline: none; margin-bottom: 16px;
+  }
+  .modal input[type=text]:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ── Upload zone ── */
+  #upload-modal .drop-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius); padding: 32px;
+    text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+    margin-bottom: 16px; color: var(--muted);
+  }
+  #upload-modal .drop-zone.dragover { border-color: var(--accent); background: rgba(91,110,245,.07); color: var(--text); }
+  #upload-modal .drop-zone svg { width: 32px; height: 32px; margin-bottom: 8px; display: block; margin-left: auto; margin-right: auto; }
+  #upload-modal #file-input { display: none; }
+  #upload-list { list-style: none; max-height: 160px; overflow-y: auto; font-size: 13px; margin-bottom: 12px; }
+  #upload-list li { padding: 4px 0; display: flex; justify-content: space-between; color: var(--muted); }
+  #upload-list li.done { color: var(--success); }
+  #upload-list li.fail { color: var(--danger); }
+
+  /* ── Preview modal ── */
+  #preview-modal .preview-content { max-height: 70vh; overflow: auto; text-align: center; margin-bottom: 16px; }
+  #preview-modal img, #preview-modal video, #preview-modal audio { max-width: 100%; max-height: 60vh; border-radius: 6px; }
+  #preview-modal pre {
+    text-align: left; background: var(--bg); border-radius: 6px; padding: 16px;
+    font-size: 13px; font-family: monospace; white-space: pre-wrap; word-break: break-all;
+    max-height: 60vh; overflow-y: auto; color: var(--text);
+  }
+  #preview-modal iframe { width: 100%; height: 60vh; border: none; border-radius: 6px; background: #fff; }
+
+  /* ── Toast ── */
+  #toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+  .toast {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 18px; font-size: 13px; max-width: 320px;
+    animation: slideIn .2s ease;
+  }
+  .toast.success { border-color: var(--success); color: var(--success); }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+  .size-text { color: var(--muted); font-size: 13px; }
+  .select-all-wrap { display: flex; align-items: center; gap: 8px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><circle cx="12" cy="13" r="2"/></svg>
+    Drive Browser
+  </div>
+
+  <form class="search-wrap" method="get" action="">
+    <span class="ico">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    </span>
+    <input type="text" name="q" placeholder="Search in this folder…" value="{{ search }}" />
+    {% if subpath %}<input type="hidden" name="path" value="{{ subpath }}" />{% endif %}
+  </form>
+</header>
+
+<!-- Breadcrumb -->
+<div class="breadcrumb">
+  {% for crumb in breadcrumbs %}
+    {% if not forloop.last %}
+      <a href="{% if crumb.path %}/browse/{{ crumb.path }}/{% else %}/{% endif %}">{{ crumb.name }}</a>
+      <span class="sep">›</span>
+    {% else %}
+      <span>{{ crumb.name }}</span>
+    {% endif %}
+  {% endfor %}
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  {% if not is_root %}
+  <a href="{% if parent_path %}/browse/{{ parent_path }}/{% else %}/{% endif %}" class="btn btn-ghost">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    Back
+  </a>
+  {% endif %}
+
+  <button class="btn btn-ghost" onclick="openNewFolder()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    New Folder
+  </button>
+
+  <button class="btn btn-primary" onclick="openUpload()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Upload
+  </button>
+
+  <button class="btn btn-danger" id="delete-selected-btn" disabled onclick="deleteSelected()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+    Delete Selected
+  </button>
+
+  <div class="info">
+    {{ entries|length }} item{{ entries|length|pluralize }}
+    {% if search %} matching "<strong>{{ search }}</strong>"{% endif %}
+  </div>
+</div>
+
+<!-- File Table -->
+<div class="file-table-wrap">
+  {% if entries %}
+  <table class="file-table">
+    <thead>
+      <tr>
+        <th class="col-check">
+          <input type="checkbox" id="select-all" onchange="toggleAll(this)" />
+        </th>
+        <th class="col-name">
+          <a href="?sort=name&order={% if sort_by == 'name' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search %}&q={{ search }}{% endif %}">
+            Name {% if sort_by == 'name' %}{{ order|yesno:"↑,↓" }}{% endif %}
+          </a>
+        </th>
+        <th class="col-size">
+          <a href="?sort=size&order={% if sort_by == 'size' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search %}&q={{ search }}{% endif %}">
+            Size {% if sort_by == 'size' %}{{ order|yesno:"↑,↓" }}{% endif %}
+          </a>
+        </th>
+        <th class="col-actions">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr data-path="{{ entry.rel_path }}" data-is-dir="{{ entry.is_dir|yesno:'true,false' }}">
+        <td class="col-check">
+          <input type="checkbox" class="row-check" onchange="updateDeleteBtn()" />
+        </td>
+        <td class="col-name">
+          {% if entry.is_dir %}
+            <a class="file-name" href="/browse/{{ entry.rel_path }}/">
+              <span class="file-icon folder">📁</span>
+              {{ entry.name }}
+            </a>
+          {% else %}
+            <a class="file-name" href="#" onclick="previewFile('{{ entry.rel_path }}', '{{ entry.mime }}', '{{ entry.name }}'); return false;">
+              <span class="file-icon {{ entry.mime|default:'other'|cut:'/'|slice:':5'|default:'other' }}">
+                {% if 'image' in entry.mime %}🖼️{% elif 'pdf' in entry.mime %}📄{% elif 'video' in entry.mime %}🎬{% elif 'audio' in entry.mime %}🎵{% elif 'text' in entry.mime %}📝{% else %}📎{% endif %}
+              </span>
+              {{ entry.name }}
+            </a>
+          {% endif %}
+        </td>
+        <td class="col-size size-text">{{ entry.size_human }}</td>
+        <td class="col-actions">
+          <div class="row-actions">
+            {% if not entry.is_dir %}
+            <button class="icon-btn" title="Preview" onclick="previewFile('{{ entry.rel_path }}', '{{ entry.mime }}', '{{ entry.name }}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <a class="icon-btn" title="Download" href="/download/{{ entry.rel_path }}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+            {% endif %}
+            <button class="icon-btn" title="Rename" onclick="openRename('{{ entry.rel_path }}', '{{ entry.name }}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </button>
+            <button class="icon-btn danger" title="Delete" onclick="deleteSingle('{{ entry.rel_path }}', '{{ entry.name }}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    <p>{% if search %}No files matching "{{ search }}"{% else %}This folder is empty{% endif %}</p>
+    <p style="font-size:13px">Upload files or create a new folder to get started.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- New Folder Modal -->
+<div class="modal-backdrop" id="folder-modal">
+  <div class="modal">
+    <h3>New Folder</h3>
+    <input type="text" id="folder-name-input" placeholder="Folder name…" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('folder-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createFolder()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Modal -->
+<div class="modal-backdrop" id="rename-modal">
+  <div class="modal">
+    <h3>Rename</h3>
+    <input type="text" id="rename-input" placeholder="New name…" />
+    <input type="hidden" id="rename-path" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('rename-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="doRename()">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal-backdrop" id="upload-modal">
+  <div class="modal">
+    <h3>Upload Files</h3>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p>Click or drag & drop files here</p>
+    </div>
+    <input type="file" id="file-input" multiple onchange="handleFileSelect(this.files)" />
+    <ul id="upload-list"></ul>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('upload-modal')">Close</button>
+      <button class="btn btn-primary" id="upload-btn" onclick="doUpload()">Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal-backdrop" id="preview-modal">
+  <div class="modal" style="max-width:720px;">
+    <h3 id="preview-title" style="margin-bottom:12px;word-break:break-all;"></h3>
+    <div class="preview-content" id="preview-content"></div>
+    <div class="modal-actions">
+      <a class="btn btn-ghost" id="preview-download-link" href="#">Download</a>
+      <button class="btn btn-ghost" onclick="closeModal('preview-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+const CURRENT_PATH = "{{ subpath }}";
+
+// ── Toasts ──────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── Modals ───────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-backdrop').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ── Select All ───────────────────────────────────────────────
+function toggleAll(cb) {
+  document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+  updateDeleteBtn();
+}
+function updateDeleteBtn() {
+  const any = document.querySelectorAll('.row-check:checked').length > 0;
+  document.getElementById('delete-selected-btn').disabled = !any;
+  document.getElementById('select-all').checked =
+    document.querySelectorAll('.row-check').length > 0 &&
+    document.querySelectorAll('.row-check:not(:checked)').length === 0;
+}
+
+// ── New Folder ───────────────────────────────────────────────
+function openNewFolder() {
+  document.getElementById('folder-name-input').value = '';
+  openModal('folder-modal');
+  setTimeout(() => document.getElementById('folder-name-input').focus(), 50);
+}
+async function createFolder() {
+  const name = document.getElementById('folder-name-input').value.trim();
+  if (!name) return;
+  const res = await fetch('/newfolder/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: CURRENT_PATH, name })
+  });
+  const data = await res.json();
+  if (data.ok) { toast('Folder created', 'success'); location.reload(); }
+  else { toast('Error: ' + data.error, 'error'); }
+}
+document.getElementById('folder-name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') createFolder();
+});
+
+// ── Rename ───────────────────────────────────────────────────
+function openRename(path, name) {
+  document.getElementById('rename-path').value = path;
+  document.getElementById('rename-input').value = name;
+  openModal('rename-modal');
+  setTimeout(() => {
+    const inp = document.getElementById('rename-input');
+    inp.focus();
+    const dot = name.lastIndexOf('.');
+    inp.setSelectionRange(0, dot > 0 ? dot : name.length);
+  }, 50);
+}
+async function doRename() {
+  const path = document.getElementById('rename-path').value;
+  const name = document.getElementById('rename-input').value.trim();
+  if (!name) return;
+  const res = await fetch('/rename/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, new_name: name })
+  });
+  const data = await res.json();
+  if (data.ok) { toast('Renamed successfully', 'success'); location.reload(); }
+  else { toast('Error: ' + data.error, 'error'); }
+}
+document.getElementById('rename-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doRename();
+});
+
+// ── Delete ───────────────────────────────────────────────────
+async function deleteSingle(path, name) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const res = await fetch('/delete/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths: [path] })
+  });
+  const data = await res.json();
+  if (data.ok) { toast('Deleted', 'success'); location.reload(); }
+  else { toast('Error deleting item', 'error'); }
+}
+async function deleteSelected() {
+  const checked = document.querySelectorAll('.row-check:checked');
+  if (!checked.length) return;
+  const paths = Array.from(checked).map(cb => cb.closest('tr').dataset.path);
+  if (!confirm(`Delete ${paths.length} item(s)? This cannot be undone.`)) return;
+  const res = await fetch('/delete/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths })
+  });
+  const data = await res.json();
+  if (data.ok) { toast('Deleted ' + paths.length + ' item(s)', 'success'); location.reload(); }
+  else { toast('Some items could not be deleted', 'error'); location.reload(); }
+}
+
+// ── Upload ───────────────────────────────────────────────────
+let filesToUpload = [];
+function openUpload() {
+  filesToUpload = [];
+  document.getElementById('upload-list').innerHTML = '';
+  document.getElementById('file-input').value = '';
+  openModal('upload-modal');
+}
+function handleFileSelect(files) {
+  filesToUpload = Array.from(files);
+  const ul = document.getElementById('upload-list');
+  ul.innerHTML = '';
+  filesToUpload.forEach((f, i) => {
+    const li = document.createElement('li');
+    li.id = 'upload-item-' + i;
+    li.textContent = f.name;
+    const sz = document.createElement('span');
+    sz.textContent = humanSize(f.size);
+    li.appendChild(sz);
+    ul.appendChild(li);
+  });
+}
+function humanSize(n) {
+  const units = ['B','KB','MB','GB'];
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+  return (i === 0 ? n : n.toFixed(1)) + ' ' + units[i];
+}
+async function doUpload() {
+  if (!filesToUpload.length) { toast('No files selected', 'error'); return; }
+  document.getElementById('upload-btn').disabled = true;
+  const fd = new FormData();
+  fd.append('path', CURRENT_PATH);
+  filesToUpload.forEach(f => fd.append('files', f));
+  try {
+    const res = await fetch('/upload/', { method: 'POST', body: fd });
+    const data = await res.json();
+    data.uploaded.forEach(name => {
+      const idx = filesToUpload.findIndex(f => f.name === name);
+      if (idx >= 0) document.getElementById('upload-item-' + idx)?.classList.add('done');
+    });
+    data.errors.forEach(e => {
+      const idx = filesToUpload.findIndex(f => f.name === e.name);
+      if (idx >= 0) document.getElementById('upload-item-' + idx)?.classList.add('fail');
+    });
+    if (data.uploaded.length) { toast(`Uploaded ${data.uploaded.length} file(s)`, 'success'); setTimeout(() => location.reload(), 800); }
+    if (data.errors.length) toast(`${data.errors.length} file(s) failed`, 'error');
+  } catch (e) {
+    toast('Upload failed', 'error');
+  }
+  document.getElementById('upload-btn').disabled = false;
+}
+
+// Drag & drop
+const dropZone = document.getElementById('drop-zone');
+['dragenter','dragover'].forEach(ev => dropZone.addEventListener(ev, e => {
+  e.preventDefault(); dropZone.classList.add('dragover');
+}));
+['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+}));
+dropZone.addEventListener('drop', e => {
+  handleFileSelect(e.dataTransfer.files);
+});
+
+// ── Preview ──────────────────────────────────────────────────
+async function previewFile(path, mime, name) {
+  const url = '/preview/' + path;
+  document.getElementById('preview-title').textContent = name;
+  document.getElementById('preview-download-link').href = '/download/' + path;
+  const content = document.getElementById('preview-content');
+  content.innerHTML = '';
+
+  if (mime.startsWith('image/')) {
+    const img = document.createElement('img');
+    img.src = url;
+    content.appendChild(img);
+  } else if (mime.startsWith('video/')) {
+    const vid = document.createElement('video');
+    vid.src = url; vid.controls = true; vid.style.maxWidth = '100%';
+    content.appendChild(vid);
+  } else if (mime.startsWith('audio/')) {
+    const aud = document.createElement('audio');
+    aud.src = url; aud.controls = true; aud.style.width = '100%';
+    content.appendChild(aud);
+  } else if (mime === 'application/pdf') {
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    content.appendChild(iframe);
+  } else if (mime.startsWith('text/')) {
+    const resp = await fetch(url);
+    const text = await resp.text();
+    const pre = document.createElement('pre');
+    pre.textContent = text;
+    content.appendChild(pre);
+  } else {
+    content.innerHTML = '<p style="color:var(--muted);padding:24px;">Preview not available for this file type.</p>';
+  }
+
+  openModal('preview-modal');
+}
+</script>
+</body>
+</html>

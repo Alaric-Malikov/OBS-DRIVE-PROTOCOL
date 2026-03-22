@@ -2,85 +2,98 @@
   THUMB DRIVE LAUNCHER - Setup & Usage Guide
 ============================================================
 
-FOLDER STRUCTURE ON YOUR THUMB DRIVE:
---------------------------------------
+WHAT THIS DOES:
+  When you plug in the drive, a popup appears. Click "Run program"
+  (or double-click launcher\start.bat manually). It will:
+    1. Start a local web file manager (Django)
+    2. Open Chrome showing your drive's files as a web app
+    3. Let you browse, upload, download, rename & delete files
+       directly on the drive — through the browser
+
+============================================================
+FOLDER STRUCTURE ON YOUR THUMB DRIVE
+============================================================
+
 <drive>:\
-  autorun.inf          <-- tells Windows to auto-run on plug-in
+  autorun.inf              ← triggers AutoPlay popup on plug-in
   launcher\
-    start.bat          <-- main launcher (auto-run target)
-    stop.bat           <-- run this before removing the drive
-    wait_for_server.bat  <-- helper: waits for Django to start
-    open_chrome.bat    <-- helper: opens Chrome to your URL
-    icon.ico           <-- (optional) drive icon shown in Explorer
+    start.bat              ← MAIN LAUNCHER — run this
+    stop.bat               ← run before removing the drive
+    install_deps.bat       ← run ONCE on first setup
+    wait_for_server.bat    ← helper (auto-used by start.bat)
+    open_chrome.bat        ← helper (auto-used by start.bat)
   app\
-    django\            <-- put your Django project here
+    filemanager\           ← the Django web file manager
       manage.py
-      ...
-    my_program\        <-- (optional) your custom file system program
-      ...
+      requirements.txt
+      filemanager\         ← Django project settings
+      browser\             ← file browser app (views, templates)
 
 ============================================================
-SETUP STEPS
+FIRST-TIME SETUP
 ============================================================
 
-1. COPY FILES TO YOUR THUMB DRIVE
-   - Copy everything in this folder to the ROOT of your thumb drive.
-   - Your drive should look like the structure above.
+1. COPY FILES
+   Copy everything here to the ROOT of your thumb drive.
 
-2. SET YOUR URL
-   Open launcher\start.bat and find this line:
-       set TARGET_URL=https://YOUR-URL-HERE.com
-   Replace it with your actual URL.
+2. INSTALL DEPENDENCIES (once per machine)
+   Double-click: launcher\install_deps.bat
+   This installs Django via pip. Requires Python 3 + internet access.
 
-3. SET YOUR DJANGO DIRECTORY
-   In launcher\start.bat, verify this line points to your Django project:
-       set DJANGO_DIR=%APP_DIR%\django
-   If your Django project is in a different subfolder under \app\, update it.
+   TIP: For a fully offline/portable setup, bundle a Python
+   embeddable distribution at: app\python\python.exe
+   start.bat will find it automatically.
 
-4. (OPTIONAL) ADD YOUR CUSTOM PROGRAM
-   In launcher\start.bat, find the commented-out section:
-       :: start "" "%APP_DIR%\my_program\my_program.exe"
-   Uncomment and edit it to launch your file system program.
-
-5. (OPTIONAL) ADD A DRIVE ICON
-   Place a file named icon.ico inside the launcher\ folder.
-   Windows will use it as the drive's icon in File Explorer.
+3. THAT'S IT
+   From now on, just plug in and click "Run program" in the AutoPlay
+   popup — or double-click launcher\start.bat directly.
 
 ============================================================
-AUTORUN NOTES
+ADDING YOUR OWN PROGRAM
 ============================================================
 
-- AutoRun is DISABLED by default on Windows 7 and later for
-  security reasons. Users will see an AutoPlay dialog asking
-  what to do. They can choose "Run program" or similar.
+Open launcher\start.bat and find the section labeled:
+  "STEP 4: (Optional) Run your own custom program"
 
-- To enable full AutoRun (not recommended for shared PCs):
-  Use Group Policy (gpedit.msc) or registry:
-    HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\IniFileMapping\Autorun.inf
-  Set value to: @SYS:DoesNotExist
+Uncomment and edit the line there to launch your own app
+alongside the file manager.
 
-- The safest approach: instruct users to open the drive in
-  File Explorer and double-click launcher\start.bat manually
-  if AutoPlay does not appear.
+============================================================
+WHAT FILES THE FILE MANAGER CAN SEE
+============================================================
+
+By default, the file manager shows the entire drive root.
+To restrict it to a specific folder, open launcher\start.bat
+and change this line:
+
+  set DRIVE_ROOT=%DRIVE%\
+
+Example — only show an "uploads" folder:
+  set DRIVE_ROOT=%DRIVE%\uploads
+
+============================================================
+AUTOPLAY / AUTORUN NOTES
+============================================================
+
+Windows 7+ disables AutoRun for security. You will see an
+AutoPlay dialog — choose "Run program" or "Open folder".
+
+If no dialog appears, just open the drive in File Explorer
+and double-click: launcher\start.bat
 
 ============================================================
 STOPPING / SAFE REMOVAL
 ============================================================
 
-Before unplugging the drive:
 1. Double-click launcher\stop.bat
-2. Wait for the "You may safely remove the drive" message
-3. Use Windows "Safely Remove Hardware" and eject the drive
+2. Wait for "You may safely remove the drive"
+3. Use Windows "Safely Remove Hardware" tray icon
 
 ============================================================
 REQUIREMENTS ON TARGET MACHINE
 ============================================================
 
 - Windows 7 or later
-- Python 3.x installed (for Django)
-- Google Chrome installed (recommended; falls back to default browser)
-- Your Django app's dependencies installed (pip install -r requirements.txt)
-
-  TIP: For a fully portable setup, bundle a Python embeddable
-  distribution inside your app\ folder and point PYTHON in
-  start.bat to that local python.exe instead.
+- Python 3.8+ installed (or bundled at app\python\python.exe)
+- Google Chrome (recommended; falls back to default browser)
+- Internet access (first time only, to install Django via pip)
