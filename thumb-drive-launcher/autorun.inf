@@ -1,0 +1,5 @@
+[autorun]
+open=launcher\start.bat
+icon=launcher\icon.ico
+label=My Drive
+action=Launch Application
