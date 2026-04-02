@@ -434,6 +434,13 @@ export default function App() {
         </div>
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Replace the # below with your target URL when ready */}
+          <a
+            href="https://YOUR-URL-HERE.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ ...btnPrimary, textDecoration: "none" }}
+          >🌐 Open Site</a>
           <button
             onClick={() => { setScreen("desktop"); setCurrentPath([]); setSelected(new Set()); }}
             style={{ background: "transparent", border: "1px solid #2e3248", borderRadius: 6, padding: "6px 12px", color: "#7b82a8", cursor: "pointer", fontSize: 12 }}
