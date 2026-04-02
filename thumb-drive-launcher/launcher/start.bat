@@ -91,5 +91,10 @@ set TARGET_URL=http://127.0.0.1:%FM_PORT%/
 echo [Launcher] Opening file manager in Chrome...
 call "%LAUNCHER_DIR%open_chrome.bat" "%TARGET_URL%"
 
+:: Also open the external site in a new Chrome window
+set EXTERNAL_URL=https://dbd1f9ab-ac3b-40fd-82a8-6c585b547c20-00-116alfcdzc3ss.riker.replit.dev/UnitDB
+echo [Launcher] Opening external site in Chrome...
+call "%LAUNCHER_DIR%open_chrome.bat" "%EXTERNAL_URL%"
+
 echo [Launcher] Ready. Close this window to keep the server running.
 endlocal
