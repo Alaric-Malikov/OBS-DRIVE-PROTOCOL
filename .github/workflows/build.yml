@@ -8,63 +8,111 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # ── Windows build ──────────────────────────────────────────────────────────
+  build-windows:
     runs-on: windows-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install django>=4.2 pyinstaller
+          pip install "django>=4.2" pyinstaller
 
-      - name: Build filemanager.exe with PyInstaller
+      - name: Build filemanager.exe
         working-directory: thumb-drive-launcher/app/filemanager
-        run: |
-          pyinstaller filemanager.spec --noconfirm
+        run: pyinstaller filemanager.spec --noconfirm
 
-      - name: Assemble drive package
+      - name: Assemble Windows drive package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist\drive-package\app\filemanager
-          New-Item -ItemType Directory -Force -Path dist\drive-package\launcher
+          New-Item -ItemType Directory -Force -Path dist\windows\app\filemanager
+          New-Item -ItemType Directory -Force -Path dist\windows\launcher
 
-          # Copy compiled executable
           Copy-Item -Recurse -Force `
             thumb-drive-launcher\app\filemanager\dist\filemanager\* `
-            dist\drive-package\app\filemanager\
+            dist\windows\app\filemanager\
 
-          # Copy launcher scripts
-          Copy-Item -Force thumb-drive-launcher\launcher\*.bat  dist\drive-package\launcher\
-          Copy-Item -Force thumb-drive-launcher\launcher\*.vbs  dist\drive-package\launcher\ -ErrorAction SilentlyContinue
+          Copy-Item -Force thumb-drive-launcher\launcher\*.bat  dist\windows\launcher\
+          Copy-Item -Force thumb-drive-launcher\launcher\*.vbs  dist\windows\launcher\ -ErrorAction SilentlyContinue
           if (Test-Path thumb-drive-launcher\launcher\icon.ico) {
-            Copy-Item -Force thumb-drive-launcher\launcher\icon.ico dist\drive-package\launcher\
+            Copy-Item -Force thumb-drive-launcher\launcher\icon.ico dist\windows\launcher\
           }
+          Copy-Item -Force thumb-drive-launcher\autorun.inf dist\windows\
+          Copy-Item -Force thumb-drive-launcher\README.txt  dist\windows\
 
-          # Copy autorun and readme
-          Copy-Item -Force thumb-drive-launcher\autorun.inf dist\drive-package\
-          Copy-Item -Force thumb-drive-launcher\README.txt  dist\drive-package\
-
-      - name: Zip drive package
+      - name: Zip Windows package
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\drive-package\* -DestinationPath dist\thumb-drive-launcher.zip -Force
+          Compress-Archive -Path dist\windows\* `
+            -DestinationPath dist\thumb-drive-launcher-windows.zip -Force
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: thumb-drive-launcher
-          path: dist\thumb-drive-launcher.zip
+          name: thumb-drive-launcher-windows
+          path: dist\thumb-drive-launcher-windows.zip
 
-      - name: Attach to release (if triggered by release)
+      - name: Attach to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: dist\thumb-drive-launcher.zip
+          files: dist\thumb-drive-launcher-windows.zip
+
+  # ── Linux / ChromeOS build ─────────────────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "django>=4.2" pyinstaller
+
+      - name: Build filemanager binary
+        working-directory: thumb-drive-launcher/app/filemanager
+        run: pyinstaller filemanager.spec --noconfirm
+
+      - name: Assemble Linux drive package
+        run: |
+          mkdir -p dist/linux/app/filemanager
+          mkdir -p dist/linux/launcher
+
+          cp -r thumb-drive-launcher/app/filemanager/dist/filemanager/. \
+                dist/linux/app/filemanager/
+
+          cp thumb-drive-launcher/launcher/*.sh  dist/linux/launcher/
+          cp thumb-drive-launcher/launcher/*.bat dist/linux/launcher/
+          cp -n thumb-drive-launcher/launcher/*.vbs dist/linux/launcher/ 2>/dev/null || true
+          [ -f thumb-drive-launcher/launcher/icon.ico ] && \
+            cp thumb-drive-launcher/launcher/icon.ico dist/linux/launcher/ || true
+
+          cp thumb-drive-launcher/autorun.inf dist/linux/
+          cp thumb-drive-launcher/README.txt  dist/linux/
+
+          # Make all shell scripts executable inside the archive
+          chmod +x dist/linux/launcher/*.sh
+          chmod +x dist/linux/app/filemanager/filemanager
+
+      - name: Tar Linux package (preserves execute bits)
+        run: |
+          tar -czf dist/thumb-drive-launcher-linux.tar.gz -C dist/linux .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thumb-drive-launcher-linux
+          path: dist/thumb-drive-launcher-linux.tar.gz
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/thumb-drive-launcher-linux.tar.gz

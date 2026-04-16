@@ -1,99 +1,130 @@
 ============================================================
   THUMB DRIVE LAUNCHER - Setup & Usage Guide
+  Supports: Windows 7+  |  Linux  |  ChromeOS
 ============================================================
 
 WHAT THIS DOES:
-  When you plug in the drive, a popup appears. Click "Run program"
-  (or double-click launcher\start.bat manually). It will:
+  When you plug in the drive and run the launcher, it will:
     1. Start a local web file manager (Django)
     2. Open Chrome showing your drive's files as a web app
     3. Let you browse, upload, download, rename & delete files
        directly on the drive — through the browser
+    4. Silently pre-warm the external Replit project in the
+       background so it loads instantly when you open it
 
 ============================================================
 FOLDER STRUCTURE ON YOUR THUMB DRIVE
 ============================================================
 
-<drive>:\
-  autorun.inf              ← triggers AutoPlay popup on plug-in
+<drive root>\
+  autorun.inf              <- Windows AutoPlay trigger
+  README.txt               <- this file
   launcher\
-    start.bat              ← MAIN LAUNCHER — run this
-    stop.bat               ← run before removing the drive
-    install_deps.bat       ← run ONCE on first setup
-    wait_for_server.bat    ← helper (auto-used by start.bat)
-    open_chrome.bat        ← helper (auto-used by start.bat)
+    start.bat              <- Windows launcher
+    stop.bat               <- Windows shutdown
+    start.sh               <- Linux / ChromeOS launcher
+    stop.sh                <- Linux / ChromeOS shutdown
+    background_launcher.bat/.sh   <- Replit wake-up (auto)
+    wait_for_server.bat/.sh       <- startup helper (auto)
+    open_chrome.bat / open_browser.sh  <- browser helper (auto)
   app\
-    filemanager\           ← the Django web file manager
-      manage.py
+    filemanager\
+      filemanager.exe      <- compiled Windows binary (no Python needed)
+      filemanager          <- compiled Linux binary   (no Python needed)
+      manage.py            <- fallback if binary missing
       requirements.txt
-      filemanager\         ← Django project settings
-      browser\             ← file browser app (views, templates)
+
 
 ============================================================
-FIRST-TIME SETUP
+STARTING THE LAUNCHER
 ============================================================
 
-1. COPY FILES
-   Copy everything here to the ROOT of your thumb drive.
+  WINDOWS
+  -------
+  Option A (easiest): Plug in drive -> AutoPlay popup ->
+                      click "Launch Application"
+  Option B:           Open the drive in File Explorer ->
+                      double-click launcher\start.bat
 
-2. INSTALL DEPENDENCIES (once per machine)
-   Double-click: launcher\install_deps.bat
-   This installs Django via pip. Requires Python 3 + internet access.
+  LINUX
+  -----
+  Open a terminal and run:
+    bash /media/YOUR_USERNAME/DRIVE_NAME/launcher/start.sh
 
-   TIP: For a fully offline/portable setup, bundle a Python
-   embeddable distribution at: app\python\python.exe
-   start.bat will find it automatically.
+  Tip: Find your drive path with:  lsblk -o NAME,MOUNTPOINT
 
-3. THAT'S IT
-   From now on, just plug in and click "Run program" in the AutoPlay
-   popup — or double-click launcher\start.bat directly.
+  CHROMEOS (Linux environment)
+  ----------------------------
+  1. Enable Linux (Settings -> Advanced -> Developers -> Linux)
+  2. Open the Terminal app
+  3. Find the drive mount — usually:
+       /mnt/chromeos/removable/YOUR_DRIVE_NAME/
+  4. Run:
+       bash /mnt/chromeos/removable/YOUR_DRIVE_NAME/launcher/start.sh
 
-============================================================
-ADDING YOUR OWN PROGRAM
-============================================================
+  If prompted, allow the Linux environment to access your files
+  (Settings -> Linux -> Manage shared folders).
 
-Open launcher\start.bat and find the section labeled:
-  "STEP 4: (Optional) Run your own custom program"
-
-Uncomment and edit the line there to launch your own app
-alongside the file manager.
-
-============================================================
-WHAT FILES THE FILE MANAGER CAN SEE
-============================================================
-
-By default, the file manager shows the entire drive root.
-To restrict it to a specific folder, open launcher\start.bat
-and change this line:
-
-  set DRIVE_ROOT=%DRIVE%\
-
-Example — only show an "uploads" folder:
-  set DRIVE_ROOT=%DRIVE%\uploads
 
 ============================================================
-AUTOPLAY / AUTORUN NOTES
+FIRST-TIME SETUP (if compiled binary is missing)
 ============================================================
 
-Windows 7+ disables AutoRun for security. You will see an
-AutoPlay dialog — choose "Run program" or "Open folder".
+  WINDOWS:  Run launcher\install_deps.bat  (installs Django via pip)
+  LINUX:    sudo apt install python3 python3-pip curl
+            pip3 install django
+  CHROMEOS: Open Linux terminal:
+            sudo apt install python3 python3-pip curl
+            pip3 install django
 
-If no dialog appears, just open the drive in File Explorer
-and double-click: launcher\start.bat
 
 ============================================================
 STOPPING / SAFE REMOVAL
 ============================================================
 
-1. Double-click launcher\stop.bat
-2. Wait for "You may safely remove the drive"
-3. Use Windows "Safely Remove Hardware" tray icon
+  WINDOWS:   Double-click launcher\stop.bat
+  LINUX:     bash /path/to/drive/launcher/stop.sh
+  CHROMEOS:  bash /mnt/chromeos/removable/DRIVE/launcher/stop.sh
+
+  Then eject/unmount the drive normally.
+
+
+============================================================
+RESTRICTING WHICH FILES ARE VISIBLE
+============================================================
+
+  The file manager shows the entire drive by default.
+  To restrict it to a subfolder:
+
+  Windows — open launcher\start.bat and change:
+    set DRIVE_ROOT=%DRIVE%\
+  to:
+    set DRIVE_ROOT=%DRIVE%\my-folder
+
+  Linux/ChromeOS — open launcher\start.sh and change:
+    DRIVE_ROOT="$(cd "$LAUNCHER_DIR/.." && pwd)"
+  to:
+    DRIVE_ROOT="/path/to/drive/my-folder"
+
 
 ============================================================
 REQUIREMENTS ON TARGET MACHINE
 ============================================================
 
-- Windows 7 or later
-- Python 3.8+ installed (or bundled at app\python\python.exe)
-- Google Chrome (recommended; falls back to default browser)
-- Internet access (first time only, to install Django via pip)
+  WINDOWS
+    - Windows 7 or later
+    - Compiled filemanager.exe (included) — no Python needed
+    - Fallback: Python 3.8+ if binary not present
+    - Google Chrome (recommended; falls back to default browser)
+
+  LINUX
+    - Any modern Linux distro
+    - Compiled filemanager binary (included) — no Python needed
+    - Fallback: Python 3.8+ and Django if binary not present
+    - curl  (for background wake-up polling)
+    - Google Chrome, Chromium, or any browser via xdg-open
+
+  CHROMEOS
+    - ChromeOS with Linux environment enabled
+    - Same requirements as Linux above
+    - URLs open in the ChromeOS Chrome browser automatically
