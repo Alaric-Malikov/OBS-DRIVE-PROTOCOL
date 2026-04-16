@@ -27,43 +27,15 @@ jobs:
         working-directory: thumb-drive-launcher/app/filemanager
         run: pyinstaller filemanager.spec --noconfirm
 
-      - name: Upload Windows binary artifact
+      - name: Upload Windows binary
         uses: actions/upload-artifact@v4
         with:
           name: bin-windows
           path: thumb-drive-launcher/app/filemanager/dist/filemanager/
 
-  # ── Linux / ChromeOS build — produces filemanager binary ──────────────────
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install "django>=4.2" pyinstaller
-
-      - name: Build filemanager binary
-        working-directory: thumb-drive-launcher/app/filemanager
-        run: pyinstaller filemanager.spec --noconfirm
-
-      - name: Mark binary executable
-        run: chmod +x thumb-drive-launcher/app/filemanager/dist/filemanager/filemanager
-
-      - name: Upload Linux binary artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: bin-linux
-          path: thumb-drive-launcher/app/filemanager/dist/filemanager/
-
-  # ── Universal package — combines both binaries onto one drive ─────────────
+  # ── Universal package — Windows exe + Linux/ChromeOS Python source ─────────
   build-universal:
-    needs: [build-windows, build-linux]
+    needs: [build-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,26 +46,21 @@ jobs:
           name: bin-windows
           path: dist/bins/windows/
 
-      - name: Download Linux binary
-        uses: actions/download-artifact@v4
-        with:
-          name: bin-linux
-          path: dist/bins/linux/
-
       - name: Assemble universal drive package
         run: |
           mkdir -p dist/drive/app/filemanager/windows
-          mkdir -p dist/drive/app/filemanager/linux
           mkdir -p dist/drive/launcher
 
-          # Windows binary goes in its own subfolder
+          # Windows compiled binary
           cp -r dist/bins/windows/. dist/drive/app/filemanager/windows/
 
-          # Linux binary goes in its own subfolder (mark executable)
-          cp -r dist/bins/linux/.  dist/drive/app/filemanager/linux/
-          chmod +x dist/drive/app/filemanager/linux/filemanager
+          # Django source (used directly on Linux/ChromeOS — no binary needed)
+          cp -r thumb-drive-launcher/app/filemanager/browser    dist/drive/app/filemanager/
+          cp -r thumb-drive-launcher/app/filemanager/filemanager dist/drive/app/filemanager/
+          cp    thumb-drive-launcher/app/filemanager/manage.py   dist/drive/app/filemanager/
+          cp    thumb-drive-launcher/app/filemanager/requirements.txt dist/drive/app/filemanager/
 
-          # All launcher scripts (both .bat and .sh)
+          # All launcher scripts
           cp thumb-drive-launcher/launcher/*.bat dist/drive/launcher/
           cp thumb-drive-launcher/launcher/*.sh  dist/drive/launcher/
           cp thumb-drive-launcher/launcher/*.vbs dist/drive/launcher/ 2>/dev/null || true
@@ -101,15 +68,10 @@ jobs:
             cp thumb-drive-launcher/launcher/icon.ico dist/drive/launcher/ || true
           chmod +x dist/drive/launcher/*.sh
 
-          # Source fallback + autorun + readme
-          cp thumb-drive-launcher/app/filemanager/manage.py       dist/drive/app/filemanager/
-          cp thumb-drive-launcher/app/filemanager/requirements.txt dist/drive/app/filemanager/
-          cp -r thumb-drive-launcher/app/filemanager/browser       dist/drive/app/filemanager/
-          cp -r thumb-drive-launcher/app/filemanager/filemanager   dist/drive/app/filemanager/
           cp thumb-drive-launcher/autorun.inf dist/drive/
           cp thumb-drive-launcher/README.txt  dist/drive/
 
-      - name: Create universal zip
+      - name: Zip universal package
         run: |
           cd dist/drive
           zip -r ../thumb-drive-launcher-universal.zip .
