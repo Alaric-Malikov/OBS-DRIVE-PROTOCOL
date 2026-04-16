@@ -1,8 +1,8 @@
 @echo off
 :: ============================================================
 :: stop.bat - Full shutdown protocol.
-:: Stops the Django file manager AND the hidden background
-:: Chrome subprocess. Run before safely removing the drive.
+:: Stops the Django file manager AND the background wake-up
+:: polling process. Run before safely removing the drive.
 :: ============================================================
 echo [Launcher] Shutting down...
 
@@ -12,19 +12,18 @@ taskkill /f /fi "WINDOWTITLE eq Drive File Manager*" >nul 2>&1
 taskkill /f /im python.exe >nul 2>&1
 taskkill /f /im py.exe >nul 2>&1
 
-:: -- 2. Stop the hidden headless Chrome subprocess --
-:: We only kill chrome.exe processes whose command line contains
-:: '--headless', so the user's regular Chrome windows are untouched.
-echo [Launcher] Stopping hidden background subprocess (headless Chrome)...
+:: -- 2. Stop the background polling subprocess --
+:: Kills any PowerShell processes that were polling the wake URL,
+:: and the cmd window running background_launcher.bat.
+echo [Launcher] Stopping background wake-up subprocess...
 powershell -NoProfile -WindowStyle Hidden -Command ^
-  "Get-WmiObject Win32_Process -Filter \"name='chrome.exe'\" ^
-   | Where-Object { $_.CommandLine -like '*--headless*' } ^
+  "Get-WmiObject Win32_Process -Filter \"name='powershell.exe'\" ^
+   | Where-Object { $_.CommandLine -like '*Invoke-WebRequest*riker.replit.dev*' } ^
    | ForEach-Object { $_.Terminate() }" >nul 2>&1
 
-:: -- 3. Kill the wscript/background_launcher host process (if still alive) --
 powershell -NoProfile -WindowStyle Hidden -Command ^
-  "Get-WmiObject Win32_Process -Filter \"name='wscript.exe'\" ^
-   | Where-Object { $_.CommandLine -like '*hidden_chrome*' } ^
+  "Get-WmiObject Win32_Process -Filter \"name='cmd.exe'\" ^
+   | Where-Object { $_.CommandLine -like '*background_launcher*' } ^
    | ForEach-Object { $_.Terminate() }" >nul 2>&1
 
 echo [Launcher] All processes stopped. You may safely remove the drive.

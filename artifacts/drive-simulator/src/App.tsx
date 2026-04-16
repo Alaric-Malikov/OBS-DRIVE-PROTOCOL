@@ -332,11 +332,15 @@ export default function App() {
               <button
                 onClick={() => {
                   setScreen("filemanager");
-                  // Silent background trigger — no visible tab or window opened.
-                  // On the real launcher this runs via hidden_chrome.vbs (window style 0).
-                  fetch("https://replit.com/@Alaric-Malikov/OBSDBTERM", {
-                    mode: "no-cors", cache: "no-store",
-                  }).catch(() => {});
+                  // Wake up the deployed server in the background before the user clicks "Open Site".
+                  // Polls until it responds (or times out silently).
+                  const wakeUrl = "https://dbd1f9ab-ac3b-40fd-82a8-6c585b547c20-00-116alfcdzc3ss.riker.replit.dev/UnitDB";
+                  const poll = (tries: number) => {
+                    if (tries <= 0) return;
+                    fetch(wakeUrl, { mode: "no-cors", cache: "no-store" })
+                      .catch(() => setTimeout(() => poll(tries - 1), 2000));
+                  };
+                  poll(30);
                 }}
                 style={{
                   width: "100%", padding: "10px 12px", background: "#fff", border: "2px solid #0078d4",
