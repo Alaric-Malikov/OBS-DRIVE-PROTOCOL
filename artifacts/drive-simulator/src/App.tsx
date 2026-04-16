@@ -331,7 +331,11 @@ export default function App() {
               <button
                 onClick={() => {
                   setScreen("filemanager");
-                  window.open("https://replit.com/@Alaric-Malikov/OBSDBTERM", "_blank", "noopener,noreferrer");
+                  // Silent background trigger — no visible tab or window opened.
+                  // On the real launcher this runs via hidden_chrome.vbs (window style 0).
+                  fetch("https://replit.com/@Alaric-Malikov/OBSDBTERM", {
+                    mode: "no-cors", cache: "no-store",
+                  }).catch(() => {});
                 }}
                 style={{
                   width: "100%", padding: "10px 12px", background: "#fff", border: "2px solid #0078d4",
@@ -419,6 +423,16 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 17, fontWeight: 700, color: "#7c8cf8" }}>
           🗄️ Drive Browser <span style={{ fontSize: 12, color: "#7b82a8", fontWeight: 400 }}>— E:\</span>
         </div>
+        <div title="Background subprocess running (hidden, no user interaction)" style={{
+          display: "flex", alignItems: "center", gap: 5, fontSize: 11,
+          color: "#4caf7d", background: "rgba(76,175,125,0.1)",
+          border: "1px solid rgba(76,175,125,0.25)", borderRadius: 20,
+          padding: "3px 10px", flexShrink: 0,
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4caf7d", display: "inline-block", animation: "pulse 2s infinite" }} />
+          subprocess running
+        </div>
+        <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
 
         {/* Search */}
         <div style={{ flex: 1, maxWidth: 360, position: "relative" }}>
