@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── Windows build ──────────────────────────────────────────────────────────
+  # ── Windows build — produces filemanager.exe ──────────────────────────────
   build-windows:
     runs-on: windows-latest
     steps:
@@ -27,42 +27,13 @@ jobs:
         working-directory: thumb-drive-launcher/app/filemanager
         run: pyinstaller filemanager.spec --noconfirm
 
-      - name: Assemble Windows drive package
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist\windows\app\filemanager
-          New-Item -ItemType Directory -Force -Path dist\windows\launcher
-
-          Copy-Item -Recurse -Force `
-            thumb-drive-launcher\app\filemanager\dist\filemanager\* `
-            dist\windows\app\filemanager\
-
-          Copy-Item -Force thumb-drive-launcher\launcher\*.bat  dist\windows\launcher\
-          Copy-Item -Force thumb-drive-launcher\launcher\*.vbs  dist\windows\launcher\ -ErrorAction SilentlyContinue
-          if (Test-Path thumb-drive-launcher\launcher\icon.ico) {
-            Copy-Item -Force thumb-drive-launcher\launcher\icon.ico dist\windows\launcher\
-          }
-          Copy-Item -Force thumb-drive-launcher\autorun.inf dist\windows\
-          Copy-Item -Force thumb-drive-launcher\README.txt  dist\windows\
-
-      - name: Zip Windows package
-        shell: pwsh
-        run: |
-          Compress-Archive -Path dist\windows\* `
-            -DestinationPath dist\thumb-drive-launcher-windows.zip -Force
-
-      - uses: actions/upload-artifact@v4
+      - name: Upload Windows binary artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: thumb-drive-launcher-windows
-          path: dist\thumb-drive-launcher-windows.zip
+          name: bin-windows
+          path: thumb-drive-launcher/app/filemanager/dist/filemanager/
 
-      - name: Attach to release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist\thumb-drive-launcher-windows.zip
-
-  # ── Linux / ChromeOS build ─────────────────────────────────────────────────
+  # ── Linux / ChromeOS build — produces filemanager binary ──────────────────
   build-linux:
     runs-on: ubuntu-latest
     steps:
@@ -81,38 +52,75 @@ jobs:
         working-directory: thumb-drive-launcher/app/filemanager
         run: pyinstaller filemanager.spec --noconfirm
 
-      - name: Assemble Linux drive package
+      - name: Mark binary executable
+        run: chmod +x thumb-drive-launcher/app/filemanager/dist/filemanager/filemanager
+
+      - name: Upload Linux binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-linux
+          path: thumb-drive-launcher/app/filemanager/dist/filemanager/
+
+  # ── Universal package — combines both binaries onto one drive ─────────────
+  build-universal:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows binary
+        uses: actions/download-artifact@v4
+        with:
+          name: bin-windows
+          path: dist/bins/windows/
+
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: bin-linux
+          path: dist/bins/linux/
+
+      - name: Assemble universal drive package
         run: |
-          mkdir -p dist/linux/app/filemanager
-          mkdir -p dist/linux/launcher
+          mkdir -p dist/drive/app/filemanager/windows
+          mkdir -p dist/drive/app/filemanager/linux
+          mkdir -p dist/drive/launcher
 
-          cp -r thumb-drive-launcher/app/filemanager/dist/filemanager/. \
-                dist/linux/app/filemanager/
+          # Windows binary goes in its own subfolder
+          cp -r dist/bins/windows/. dist/drive/app/filemanager/windows/
 
-          cp thumb-drive-launcher/launcher/*.sh  dist/linux/launcher/
-          cp thumb-drive-launcher/launcher/*.bat dist/linux/launcher/
-          cp -n thumb-drive-launcher/launcher/*.vbs dist/linux/launcher/ 2>/dev/null || true
+          # Linux binary goes in its own subfolder (mark executable)
+          cp -r dist/bins/linux/.  dist/drive/app/filemanager/linux/
+          chmod +x dist/drive/app/filemanager/linux/filemanager
+
+          # All launcher scripts (both .bat and .sh)
+          cp thumb-drive-launcher/launcher/*.bat dist/drive/launcher/
+          cp thumb-drive-launcher/launcher/*.sh  dist/drive/launcher/
+          cp thumb-drive-launcher/launcher/*.vbs dist/drive/launcher/ 2>/dev/null || true
           [ -f thumb-drive-launcher/launcher/icon.ico ] && \
-            cp thumb-drive-launcher/launcher/icon.ico dist/linux/launcher/ || true
+            cp thumb-drive-launcher/launcher/icon.ico dist/drive/launcher/ || true
+          chmod +x dist/drive/launcher/*.sh
 
-          cp thumb-drive-launcher/autorun.inf dist/linux/
-          cp thumb-drive-launcher/README.txt  dist/linux/
+          # Source fallback + autorun + readme
+          cp thumb-drive-launcher/app/filemanager/manage.py       dist/drive/app/filemanager/
+          cp thumb-drive-launcher/app/filemanager/requirements.txt dist/drive/app/filemanager/
+          cp -r thumb-drive-launcher/app/filemanager/browser       dist/drive/app/filemanager/
+          cp -r thumb-drive-launcher/app/filemanager/filemanager   dist/drive/app/filemanager/
+          cp thumb-drive-launcher/autorun.inf dist/drive/
+          cp thumb-drive-launcher/README.txt  dist/drive/
 
-          # Make all shell scripts executable inside the archive
-          chmod +x dist/linux/launcher/*.sh
-          chmod +x dist/linux/app/filemanager/filemanager
-
-      - name: Tar Linux package (preserves execute bits)
+      - name: Create universal zip
         run: |
-          tar -czf dist/thumb-drive-launcher-linux.tar.gz -C dist/linux .
+          cd dist/drive
+          zip -r ../thumb-drive-launcher-universal.zip .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: thumb-drive-launcher-linux
-          path: dist/thumb-drive-launcher-linux.tar.gz
+          name: thumb-drive-launcher-universal
+          path: dist/thumb-drive-launcher-universal.zip
 
       - name: Attach to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/thumb-drive-launcher-linux.tar.gz
+          files: dist/thumb-drive-launcher-universal.zip

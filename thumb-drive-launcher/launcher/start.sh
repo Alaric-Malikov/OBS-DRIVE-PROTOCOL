@@ -11,7 +11,7 @@ DRIVE_ROOT="$(cd "$LAUNCHER_DIR/.." && pwd)"
 APP_DIR="$DRIVE_ROOT/app"
 FM_DIR="$APP_DIR/filemanager"
 FM_PORT=8000
-FM_EXE="$FM_DIR/filemanager"          # Linux compiled binary
+FM_EXE="$FM_DIR/linux/filemanager"     # Linux compiled binary
 PIDFILE="/tmp/drive_fm.pid"
 WAKE_PID_FILE="/tmp/drive_wake.pid"
 

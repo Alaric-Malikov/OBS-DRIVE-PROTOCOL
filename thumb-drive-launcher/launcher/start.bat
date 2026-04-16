@@ -12,7 +12,7 @@ set LAUNCHER_DIR=%~dp0
 set APP_DIR=%DRIVE%\app
 set FM_DIR=%APP_DIR%\filemanager
 set FM_PORT=8000
-set FM_EXE=%FM_DIR%\filemanager.exe
+set FM_EXE=%FM_DIR%\windows\filemanager.exe
 set DRIVE_ROOT=%DRIVE%\
 
 echo [Launcher] Starting from drive %DRIVE%
