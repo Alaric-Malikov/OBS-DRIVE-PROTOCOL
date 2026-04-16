@@ -102,6 +102,7 @@ export default function App() {
   const [previewNode, setPreviewNode] = useState<FSFile | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pendingUploads, setPendingUploads] = useState<File[]>([]);
+  const [ejecting, setEjecting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -429,8 +430,8 @@ export default function App() {
           border: "1px solid rgba(76,175,125,0.25)", borderRadius: 20,
           padding: "3px 10px", flexShrink: 0,
         }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4caf7d", display: "inline-block", animation: "pulse 2s infinite" }} />
-          subprocess running
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: ejecting ? "#e05c5c" : "#4caf7d", display: "inline-block", animation: "pulse 2s infinite" }} />
+          {ejecting ? "stopping subprocess…" : "subprocess running"}
         </div>
         <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
 
@@ -459,9 +460,24 @@ export default function App() {
             style={{ ...btnPrimary, textDecoration: "none" }}
           >🌐 Open Site</a>
           <button
-            onClick={() => { setScreen("desktop"); setCurrentPath([]); setSelected(new Set()); }}
-            style={{ background: "transparent", border: "1px solid #2e3248", borderRadius: 6, padding: "6px 12px", color: "#7b82a8", cursor: "pointer", fontSize: 12 }}
-          >⏏ Eject Drive</button>
+            disabled={ejecting}
+            onClick={() => {
+              setEjecting(true);
+              // Simulate subprocess shutdown sequence before returning to desktop
+              setTimeout(() => {
+                setScreen("desktop");
+                setCurrentPath([]);
+                setSelected(new Set());
+                setEjecting(false);
+              }, 1800);
+            }}
+            style={{
+              background: "transparent", border: "1px solid #2e3248", borderRadius: 6,
+              padding: "6px 12px", color: ejecting ? "#e05c5c" : "#7b82a8",
+              cursor: ejecting ? "not-allowed" : "pointer", fontSize: 12,
+              transition: "color 0.2s",
+            }}
+          >{ejecting ? "⏳ Stopping subprocess…" : "⏏ Eject Drive"}</button>
         </div>
       </header>
 
