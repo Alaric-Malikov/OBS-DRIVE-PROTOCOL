@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 
+
 // ── Virtual File System ─────────────────────────────────────────────────────
 
 type FSFile = { kind: "file"; name: string; size: number; content?: string; mime: string };
