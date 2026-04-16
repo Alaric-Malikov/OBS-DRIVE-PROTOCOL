@@ -1,0 +1,70 @@
+name: Build Thumb Drive Launcher
+
+on:
+  push:
+    branches: [main, master]
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install django>=4.2 pyinstaller
+
+      - name: Build filemanager.exe with PyInstaller
+        working-directory: thumb-drive-launcher/app/filemanager
+        run: |
+          pyinstaller filemanager.spec --noconfirm
+
+      - name: Assemble drive package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist\drive-package\app\filemanager
+          New-Item -ItemType Directory -Force -Path dist\drive-package\launcher
+
+          # Copy compiled executable
+          Copy-Item -Recurse -Force `
+            thumb-drive-launcher\app\filemanager\dist\filemanager\* `
+            dist\drive-package\app\filemanager\
+
+          # Copy launcher scripts
+          Copy-Item -Force thumb-drive-launcher\launcher\*.bat  dist\drive-package\launcher\
+          Copy-Item -Force thumb-drive-launcher\launcher\*.vbs  dist\drive-package\launcher\ -ErrorAction SilentlyContinue
+          if (Test-Path thumb-drive-launcher\launcher\icon.ico) {
+            Copy-Item -Force thumb-drive-launcher\launcher\icon.ico dist\drive-package\launcher\
+          }
+
+          # Copy autorun and readme
+          Copy-Item -Force thumb-drive-launcher\autorun.inf dist\drive-package\
+          Copy-Item -Force thumb-drive-launcher\README.txt  dist\drive-package\
+
+      - name: Zip drive package
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\drive-package\* -DestinationPath dist\thumb-drive-launcher.zip -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: thumb-drive-launcher
+          path: dist\thumb-drive-launcher.zip
+
+      - name: Attach to release (if triggered by release)
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist\thumb-drive-launcher.zip
