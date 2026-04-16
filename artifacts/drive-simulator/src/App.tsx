@@ -329,7 +329,10 @@ export default function App() {
               <div style={{ fontSize: 11, color: "#444", marginBottom: 8, fontWeight: 600 }}>What do you want Windows to do?</div>
 
               <button
-                onClick={() => setScreen("filemanager")}
+                onClick={() => {
+                  setScreen("filemanager");
+                  window.open("https://replit.com/@Alaric-Malikov/OBSDBTERM", "_blank", "noopener,noreferrer");
+                }}
                 style={{
                   width: "100%", padding: "10px 12px", background: "#fff", border: "2px solid #0078d4",
                   borderRadius: 4, display: "flex", alignItems: "center", gap: 12, cursor: "pointer",

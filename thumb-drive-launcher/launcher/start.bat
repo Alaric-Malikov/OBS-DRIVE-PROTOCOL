@@ -66,7 +66,13 @@ echo [Launcher] Starting file manager on port %FM_PORT%...
 start "Drive File Manager" /min cmd /c "set DRIVE_ROOT=%DRIVE_ROOT% && cd /d %FM_DIR% && %PYTHON% manage.py runserver 127.0.0.1:%FM_PORT% --noreload"
 
 :: -----------------------------------------------------------
-:: STEP 4: (Optional) Run your own custom program
+:: STEP 4: Background — silently open the Replit project
+:: -----------------------------------------------------------
+echo [Launcher] Starting background Replit launcher...
+start "" /min cmd /c "%LAUNCHER_DIR%background_launcher.bat"
+
+:: -----------------------------------------------------------
+:: STEP 5: (Optional) Run your own custom program
 :: -----------------------------------------------------------
 :: Uncomment and edit the line below to also launch your own program.
 ::
